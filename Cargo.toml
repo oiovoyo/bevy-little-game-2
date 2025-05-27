@@ -21,4 +21,3 @@ opt-level = 3 # Keep dependencies optimized
 
 [workspace]
 resolver = "2" # Important for Bevy to avoid feature unification issues
-File created successfully.
