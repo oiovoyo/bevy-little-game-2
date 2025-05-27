@@ -129,7 +129,7 @@ fn update_level_display(
 
 /// Updates the timer display.
 fn update_timer_display(game_timer: Res<GameTimer>, mut query: Query<&mut Text, With<TimerTextDisplay>>) {
-    if game_timer.is_changed() || game_timer.timer. जस्ट_finished() { // Update on change or when timer just finished (to show 0)
+    if game_timer.is_changed() || game_timer.timer.just_finished() { // Update on change or when timer just finished (to show 0)
         for mut text in query.iter_mut() {
             if let Some(limit) = game_timer.time_limit_seconds {
                 let remaining = (limit - game_timer.timer.elapsed_secs()).max(0.0);

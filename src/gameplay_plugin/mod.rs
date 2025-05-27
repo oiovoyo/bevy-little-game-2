@@ -8,11 +8,11 @@ use crate::game_state::GameState;
 use crate::resources::{LevelManager, GameTimer, PlayerActivationSequence, EchoPath};
 use crate::components::{Node, NodeState, Connection, DataEcho, ClickableNode, PuzzleElement};
 
-// Gameplay submodules - these would contain more detailed logic
-mod node;
-mod connection;
-mod puzzle;
-mod echo;
+// Declare gameplay submodules
+pub mod node;
+pub mod connection;
+pub mod puzzle;
+pub mod echo;
 
 pub struct GameplayPlugin;
 
@@ -53,7 +53,7 @@ fn setup_level(
     mut game_state: ResMut<NextState<GameState>>,
     mut player_activation_sequence: ResMut<PlayerActivationSequence>,
     mut echo_path: ResMut<EchoPath>,
-    asset_server: Res<AssetServer>, // For loading sprites/meshes if any
+    // asset_server: Res<AssetServer>, // For loading sprites/meshes if any. Removed as not used in current version.
 ) {
     // Clear previous level's data
     player_activation_sequence.clear();
@@ -62,9 +62,6 @@ fn setup_level(
     let level = match level_manager.get_current_level() {
         Some(l) => l.clone(), // Clone to avoid borrowing issues if we modify LevelManager later
         None => {
-            // No more levels, or error
-            // For now, go back to main menu or a "Game Won" state
-            // This case should ideally be handled before trying to load.
             if level_manager.current_level_index >= level_manager.levels.len() {
                  game_state.set(GameState::GameWon);
             } else {
@@ -88,9 +85,9 @@ fn setup_level(
     let mut node_entities: Vec<Entity> = Vec::new();
     for (i, (pos, initial_state, puzzle_info)) in level.nodes.iter().enumerate() {
         let mut node_entity_commands = commands.spawn((
-            Node { id: i }, // Use index as ID for this simple setup
+            Node { id: i }, 
             *initial_state,
-            SpriteBundle { // Placeholder visual
+            SpriteBundle { 
                 sprite: Sprite {
                     color: color_for_node_state(initial_state),
                     custom_size: Some(Vec2::new(50.0, 50.0)),
@@ -99,7 +96,7 @@ fn setup_level(
                 transform: Transform::from_translation(pos.extend(0.0)),
                 ..default()
             },
-            ClickableNode, // Make all nodes clickable by default
+            ClickableNode, 
             Name::new(format!("Node {}", i)),
         ));
         if let Some(puzzle_element) = puzzle_info {
@@ -118,12 +115,10 @@ fn setup_level(
                     is_active: false,
                 },
                 Name::new(format!("Connection {}-{}", idx_a, idx_b)),
-                // Visuals for connections will be handled by a drawing system (e.g., using bevy_prototype_lyon or gizmos)
             ));
         }
     }
     
-    // Transition to Gameplay state
     game_state.set(GameState::Gameplay);
 }
 
@@ -146,19 +141,18 @@ fn cleanup_gameplay_elements(
     }
 }
 
-/// System to update the game timer and potentially trigger game over.
+/// System to update the game timer.
 fn game_timer_system(
     time: Res<Time>,
     mut game_timer: ResMut<GameTimer>,
-    // We don't directly set GameOver here, puzzle::check_level_fail_system handles it
 ) {
     if game_timer.time_limit_seconds.is_some() {
         game_timer.timer.tick(time.delta());
     }
 }
 
-
 // Helper function for node color, might be moved to node.rs or a visuals module
+// It's pub because it's used by node.rs which is now a submodule.
 pub fn color_for_node_state(state: &NodeState) -> Color {
     match state {
         NodeState::Idle => Color::rgb(0.5, 0.5, 0.5),       // Grey
