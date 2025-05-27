@@ -1,0 +1,24 @@
+[package]
+name = "echonet_game"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+# Using the hypothetical Bevy 0.16.0 as requested
+bevy = "0.16.0"
+
+# For a real Bevy 0.13+ project, you might enable specific features like:
+# bevy = { version = "0.13.0", features = ["dynamic_linking"] }
+# Enabling dynamic linking can speed up compile times during development.
+
+[profile.dev]
+opt-level = 1 # Speeds up development builds
+
+[profile.dev.package."*"]
+opt-level = 3 # Keep dependencies optimized
+
+[workspace]
+resolver = "2" # Important for Bevy to avoid feature unification issues
+File created successfully.
