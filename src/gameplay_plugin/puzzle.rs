@@ -1,6 +1,6 @@
-use bevy::prelude::*;
+use bevy::prelude::*; // CORRECTED: Added prelude
 use crate::components::{Node, GameplayUI};
-use crate::resources::{CurrentLevel, PuzzleSpec, PlayerAttempt, GameFont}; // Added GameFont
+use crate::resources::{CurrentLevel, PuzzleSpec, PlayerAttempt, GameFont};
 use crate::game_state::GameState;
 use super::PuzzleCompleteEvent; 
 use std::collections::HashSet;
@@ -34,13 +34,10 @@ pub fn setup_level_system(
     mut puzzle_spec: ResMut<PuzzleSpec>,
     mut player_attempt: ResMut<PlayerAttempt>,
     mut next_game_state: ResMut<NextState<GameState>>,
-    game_font: Res<GameFont>, // Get the loaded font
+    game_font: Res<GameFont>, 
 ) {
     current_level.total_levels = MAX_LEVELS;
     
-    // Logic for current_level.level_id update should happen before calling this,
-    // e.g., in button handlers or when transitioning from MainMenu.
-    // If current_level.id >= MAX_LEVELS, it means we've finished all, reset to 0.
     if current_level.level_id >= MAX_LEVELS {
         current_level.level_id = 0;
     }
@@ -53,7 +50,7 @@ pub fn setup_level_system(
     for (idx, pos) in puzzle_spec.node_positions.iter().enumerate() {
         let node_color = Color::rgb(0.2, 0.2, 0.8); 
         commands.spawn((
-            SpriteBundle {
+            SpriteBundle { // This should now work
                 sprite: Sprite {
                     color: node_color,
                     custom_size: Some(Vec2::new(50.0, 50.0)),
@@ -106,7 +103,7 @@ pub fn check_puzzle_completion_system(
     if !*already_fired_event && 
        player_attempt.drawn_connections.len() == puzzle_spec.correct_connections.len() &&
        player_attempt.drawn_connections.is_subset(&puzzle_spec.correct_connections) &&
-       puzzle_spec.correct_connections.is_subset(&player_attempt.drawn_connections) { // Check for exact match
+       puzzle_spec.correct_connections.is_subset(&player_attempt.drawn_connections) { 
         println!("Puzzle Complete!");
         puzzle_complete_event.send(PuzzleCompleteEvent);
         *already_fired_event = true;
