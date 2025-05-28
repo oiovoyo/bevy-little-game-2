@@ -4,7 +4,7 @@ use crate::components::{Node, ActivatedNode};
 pub fn echo_visualization_system(
     mut activated_query: Query<(&Node, &mut Sprite), Added<ActivatedNode>>,
     mut previously_active_nodes: Local<Vec<Entity>>, 
-    all_nodes_query: Query<(Entity, &Node, &mut Sprite)>, 
+    mut all_nodes_query: Query<(Entity, &Node, &mut Sprite), Without<ActivatedNode>>, 
 ) {
     let mut current_frame_newly_activated_entities = Vec::new();
 
@@ -38,7 +38,7 @@ pub fn echo_visualization_system(
         } else {
              // If it's not in current_frame_newly_activated_entities, it means ActivatedNode was NOT just added.
              // If it was yellow (implying it had ActivatedNode), then it must have been removed.
-            if let Ok((_, node_comp, mut sprite)) = all_nodes_query.get(*old_active_entity) {
+            if let Ok((_, node_comp, mut sprite)) = all_nodes_query.get_mut(*old_active_entity) {
                 // Only revert if it was actually yellow (activated color)
                 if sprite.color == Color::srgb(0.8, 0.8, 0.2) {
                     println!("Node {} presumed deactivated (was yellow, not newly activated), reverting color.", node_comp.id);

@@ -4,7 +4,7 @@ use crate::resources::PlayerAttempt;
 use super::ConnectionAttemptEvent; 
 
 #[derive(Resource, Default)]
-struct DragState {
+pub struct DragState {
     start_node_entity: Option<Entity>,
     start_node_id: Option<usize>, 
     current_mouse_pos: Vec2,
@@ -21,18 +21,18 @@ pub fn draw_connection_system(
     mut gizmos: Gizmos, 
     mut connection_attempt_writer: EventWriter<ConnectionAttemptEvent>,
 ) {
-    let Ok(window) = windows.get_single() else { return; };
-    let Ok((camera, camera_transform)) = camera_q.get_single() else { return; };
+    let Ok(window) = windows.single() else { return; };
+    let Ok((camera, camera_transform)) = camera_q.single() else { return; };
 
     if let Some(world_pos) = window.cursor_position()
-        .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
-        .map(|ray| ray.origin.truncate())
+    .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor).ok())
+    .map(|ray| ray.origin.truncate())
     {
         drag_state.current_mouse_pos = world_pos;
 
         if mouse_button_input.just_pressed(MouseButton::Left) {
             // Use single() as per deprecation warning for get_single() on Query
-            if let Ok((activated_entity, activated_node_comp)) = activated_q.get_single() { 
+            if let Ok((activated_entity, activated_node_comp)) = activated_q.single() {
                  if let Ok((_, activated_node_transform, _)) = node_query.get(activated_entity) {
                     let distance = world_pos.distance(activated_node_transform.translation.truncate());
                     if distance < 25.0 { 
@@ -48,7 +48,7 @@ pub fn draw_connection_system(
         if mouse_button_input.pressed(MouseButton::Left) {
             if let Some(start_entity_val) = drag_state.start_node_entity {
                 if let Ok((_, start_node_transform, _)) = node_query.get(start_entity_val) {
-                     gizmos.line_2d(start_node_transform.translation.truncate(), drag_state.current_mouse_pos, Color::YELLOW);
+                     gizmos.line_2d(start_node_transform.translation.truncate(), drag_state.current_mouse_pos, Color::srgb(1.0, 1.0, 0.0));
                 } else { 
                     drag_state.start_node_entity = None;
                     drag_state.start_node_id = None;
@@ -65,7 +65,7 @@ pub fn draw_connection_system(
                     let distance = world_pos.distance(end_node_transform.translation.truncate());
                     if distance < 25.0 { 
                         println!("Attempting connection between {} and {}", start_node_id_val, end_node_comp.id);
-                        connection_attempt_writer.write(ConnectionAttemptEvent { // Corrected: send to write
+                        connection_attempt_writer.write(ConnectionAttemptEvent {
                             node1_id: start_node_id_val,
                             node2_id: end_node_comp.id,
                         });
@@ -148,7 +148,7 @@ pub fn persistent_connection_render_system(
             gizmos.line_2d(
                 start_transform.translation.truncate(),
                 end_transform.translation.truncate(),
-                Color::GREEN, 
+                Color::srgb(0.0, 1.0, 0.0), 
             );
         }
     }

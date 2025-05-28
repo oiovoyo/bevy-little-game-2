@@ -1,4 +1,4 @@
-use bevy::prelude::*; // Added
+use bevy::prelude::*;
 use crate::components::{Node, GameplayUI};
 use crate::resources::{CurrentLevel, PuzzleSpec, PlayerAttempt, GameFont};
 use crate::game_state::GameState;
@@ -43,20 +43,17 @@ pub fn setup_level_system(
     *puzzle_spec = get_level_spec(current_level.level_id);
     player_attempt.drawn_connections.clear(); 
 
-    commands.spawn((Camera2dBundle::default(), GameplayUI)); 
+    commands.spawn((Camera2d::default(), GameplayUI));
 
     for (idx, pos) in puzzle_spec.node_positions.iter().enumerate() {
         let node_color = Color::srgb(0.2, 0.2, 0.8); // Corrected Color
         commands.spawn((
-            SpriteBundle { 
-                sprite: Sprite {
-                    color: node_color,
-                    custom_size: Some(Vec2::new(50.0, 50.0)),
-                    ..default()
-                },
-                transform: Transform::from_translation(pos.extend(0.0)),
+            Sprite {
+                color: node_color,
+                custom_size: Some(Vec2::new(50.0, 50.0)),
                 ..default()
             },
+            Transform::from_translation(pos.extend(0.0)),
             Node { id: idx, original_color: node_color },
             Name::new(format!("Node_{}", idx)),
             GameplayUI, 
@@ -64,20 +61,13 @@ pub fn setup_level_system(
     }
     
      commands.spawn((
-        TextBundle::from_section(
-            format!("Level: {}/{}", current_level.level_id + 1, current_level.total_levels),
-            TextStyle { 
-                font: game_font.0.clone(),
-                font_size: 30.0,
-                color: Color::WHITE,
-            },
-        )
-        .with_style(Style { 
-            position_type: PositionType::Absolute,
-            top: Val::Px(10.0),
-            left: Val::Px(10.0),
+        Text2d::new(format!("Level: {}/{}", current_level.level_id + 1, current_level.total_levels)),
+        TextFont {
+            font_size: 30.0,
             ..default()
-        }),
+        },
+        TextColor(Color::WHITE),
+        Transform::from_translation(Vec3::new(-380.0, 270.0, 1.0)),
         GameplayUI
     ));
 
@@ -90,7 +80,7 @@ pub fn check_puzzle_completion_system(
     player_attempt: Res<PlayerAttempt>,
     mut puzzle_complete_event: EventWriter<PuzzleCompleteEvent>,
     mut already_fired_event: Local<bool>, 
-    game_state: Res<State<GameState>>,
+    game_state: Res<bevy::state::state::State<GameState>>,
 ) {
     if *game_state.get() != GameState::Playing { 
         *already_fired_event = false; 
@@ -101,7 +91,7 @@ pub fn check_puzzle_completion_system(
        player_attempt.drawn_connections.len() == puzzle_spec.correct_connections.len() &&
        player_attempt.drawn_connections.is_subset(&puzzle_spec.correct_connections) {
         println!("Puzzle Complete!");
-        puzzle_complete_event.write(PuzzleCompleteEvent); // Corrected deprecated send
+        puzzle_complete_event.write(PuzzleCompleteEvent);
         *already_fired_event = true;
     }
 }

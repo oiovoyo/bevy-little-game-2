@@ -32,3 +32,22 @@ pub struct PlayerAttempt {
 
 #[derive(Resource)]
 pub struct GameFont(pub Handle<Font>); // To store the loaded font handle
+
+#[derive(Resource, Default)]
+pub struct LevelManager {
+    pub current_level: usize,
+    pub total_levels: usize,
+}
+
+#[derive(Resource)]
+pub struct GameTimer {
+    pub timer: Timer,
+}
+
+impl Default for GameTimer {
+    fn default() -> Self {
+        Self {
+            timer: Timer::from_seconds(1.0, TimerMode::Repeating),
+        }
+    }
+}

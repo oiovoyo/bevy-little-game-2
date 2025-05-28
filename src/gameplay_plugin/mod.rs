@@ -8,6 +8,8 @@ pub mod connection;
 pub mod puzzle;
 pub mod echo;
 
+use connection::DragState;
+
 #[derive(Event, Debug)]
 pub struct ConnectionAttemptEvent {
     pub node1_id: usize,
@@ -26,7 +28,8 @@ impl Plugin for GameplayPlugin {
             .add_event::<PuzzleCompleteEvent>()
             .init_resource::<CurrentLevel>()
             .init_resource::<PlayerAttempt>()
-            .init_resource::<PuzzleSpec>() 
+            .init_resource::<PuzzleSpec>()
+            .init_resource::<DragState>()
             .add_systems(OnEnter(GameState::LoadingLevel), puzzle::setup_level_system)
             .add_systems(Update, 
                 (
@@ -59,7 +62,7 @@ fn gameplay_keyboard_input_system(
          next_game_state.set(GameState::LevelComplete); 
     }
     if keyboard_input.just_pressed(KeyCode::Space) { 
-        puzzle_complete_event.write(PuzzleCompleteEvent); // Corrected
+        puzzle_complete_event.write(PuzzleCompleteEvent);
     }
 }
 
@@ -70,12 +73,12 @@ fn cleanup_gameplay_entities(
     gameplay_ui_query: Query<Entity, With<GameplayUI>>, 
 ) {
     for entity in node_query.iter() {
-        commands.entity(entity).despawn(); // Corrected
+        commands.entity(entity).despawn();
     }
     for entity in connection_query.iter() {
-        commands.entity(entity).despawn(); // Corrected
+        commands.entity(entity).despawn();
     }
      for entity in gameplay_ui_query.iter() { 
-        commands.entity(entity).despawn(); // Corrected
+        commands.entity(entity).despawn();
     }
 }

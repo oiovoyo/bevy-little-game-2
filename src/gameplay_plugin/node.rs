@@ -10,20 +10,20 @@ pub fn node_interaction_system(
     mut selected_node_entity: Local<Option<Entity>>, 
 ) {
     // Get the primary window. If it doesn't exist, exit.
-    let Ok(window) = windows.get_single() else { 
+    let Ok(window) = windows.single() else { 
         // Consider logging an error or handling more gracefully if multiple windows or no window is an expected state.
         return; 
     };
     
     // Get the camera. If it doesn't exist, exit.
-    let Ok((camera, camera_transform)) = camera_q.get_single() else { 
+    let Ok((camera, camera_transform)) = camera_q.single() else { 
         // Consider logging an error.
         return; 
     };
 
     if mouse_button_input.just_pressed(MouseButton::Left) {
         if let Some(world_position) = window.cursor_position() // `window` is now &Window
-            .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+            .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor).ok())
             .map(|ray| ray.origin.truncate())
         {
             let mut clicked_on_node = false;

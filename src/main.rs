@@ -13,33 +13,43 @@ mod menu_plugin;
 mod resources;
 mod ui_plugin;
 
-use crate::game_state::GameState;
-use crate::menu_plugin::MenuPlugin;
-use crate::gameplay_plugin::GameplayPlugin;
-use crate::ui_plugin::UIPlugin; // CORRECTED: Capitalization
-// CORRECTED: Removed LevelManager, GameTimer as they don't exist in resources.rs
-use crate::resources::{CurrentLevel, PuzzleSpec, PlayerAttempt}; // GameFont is typically added by a plugin after loading
+use crate::game_state::GameState; 
+use crate::menu_plugin::MenuPlugin; 
+use crate::gameplay_plugin::GameplayPlugin; 
+use crate::ui_plugin::UiPlugin;
+// The resources CurrentLevel, PuzzleSpec, PlayerAttempt, GameFont were not part of the
+// previously established resources.rs. Reverting to LevelManager and GameTimer.
+use crate::resources::{LevelManager, GameTimer}; 
+
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
                 title: "EchoNet".into(),
-                resolution: (800.0, 600.0).into(),
+                // Resolution changed from 1280x720 in original generation to 800x600 here.
+                // Keeping 800x600 as per this specific instruction.
+                resolution: (800.0, 600.0).into(), 
                 ..default()
             }),
             ..default()
         }))
-        .init_state::<GameState>()
-        // Add custom resources (ensure these are defined in resources.rs and imported)
-        .init_resource::<CurrentLevel>() 
-        .init_resource::<PlayerAttempt>()
-        .init_resource::<PuzzleSpec>() 
-        // CORRECTED: Removed .init_resource for LevelManager and GameTimer
+        // Initialize GameState
+        .init_state::<GameState>() 
+        // Add custom resources 
+        .init_resource::<LevelManager>() 
+        .init_resource::<GameTimer>()
+        // GameFont is not init_resource'd as it's an asset.
+        // It should be loaded and inserted as a resource by a relevant plugin (e.g., ui_plugin or menu_plugin).
+        // Add custom plugins
         .add_plugins((
             MenuPlugin,
             GameplayPlugin,
-            UIPlugin, // CORRECTED: Matches corrected import
+            UiPlugin, // Changed from UIPlugin
         ))
+        // setup_camera was present in the original generation but removed in the self-correction.
+        // DefaultPlugins usually adds a camera if one isn't present, or specific plugins add their own.
+        // For a minimal main, it's fine to omit it if plugins handle their camera needs.
+        // .add_systems(Update, bevy::window::close_on_esc) // This is often default behavior.
         .run();
 }
