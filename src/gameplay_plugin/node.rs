@@ -1,59 +1,53 @@
-//! # Node Gameplay Logic
-
 use bevy::prelude::*;
-use crate::components::{Node, NodeState, ClickableNode, PuzzleElement};
-use crate::resources::{PlayerActivationSequence, EchoPath, LevelManager};
-// use crate::game_state::GameState; // Not directly used here, but could be for node-specific state changes
-use super::color_for_node_state; // Accessing helper from parent module (gameplay_plugin/mod.rs)
+use crate::components::{Node, ActivatedNode};
+// use crate::game_state::GameState; // Not directly used here currently
 
-/// System to handle player interaction with nodes (e.g., clicking).
 pub fn node_interaction_system(
-    mut interaction_query: Query<(&Interaction, &mut NodeState, &Node, Entity, Option<&PuzzleElement>), (Changed<Interaction>, With<ClickableNode>)>,
+    mut commands: Commands,
     mouse_button_input: Res<ButtonInput<MouseButton>>,
-    mut player_sequence: ResMut<PlayerActivationSequence>,
-    level_manager: Res<LevelManager>,
-    // mut echo_path: ResMut<EchoPath>, // Echo path determination is complex and likely better handled in puzzle.rs or echo.rs
+    windows: Query<&Window>,
+    camera_q: Query<(&Camera, &GlobalTransform)>,
+    node_query: Query<(Entity, &Transform, &Node), Without<ActivatedNode>>, // Only non-activated
+    // activated_node_query: Query<Entity, With<ActivatedNode>>, // Used for deselection logic in connection
+    mut selected_node_entity: Local<Option<Entity>>, 
 ) {
-    if !mouse_button_input.just_pressed(MouseButton::Left) {
-        return;
-    }
+    if mouse_button_input.just_pressed(MouseButton::Left) {
+        let window = windows.single();
+        let (camera, camera_transform) = camera_q.single();
 
-    let current_level_spec = level_manager.get_current_level();
-
-    for (interaction, mut node_state, node_component, entity, _puzzle_element_opt) in &mut interaction_query {
-        if *interaction == Interaction::Pressed { // Changed from Interaction::Clicked to Interaction::Pressed for more responsive feel
-            match *node_state {
-                NodeState::Idle | NodeState::Activating => {
-                    *node_state = NodeState::Active;
-                    player_sequence.add_activated_node(node_component.id);
-                    info!("Node {:?} with ID {} activated.", entity, node_component.id);
-
-                    // Start node activation logic is now primarily handled by echo::spawn_echo_system
-                    // based on the NodeState::Active of the start node.
+        if let Some(world_position) = window.cursor_position()
+            .and_then(|cursor| camera.viewport_to_world(camera_transform, cursor))
+            .map(|ray| ray.origin.truncate())
+        {
+            // Check if we are clicking an existing node to activate it
+            let mut clicked_on_node = false;
+            for (node_entity, node_transform, node_comp) in node_query.iter() {
+                let distance = world_position.distance(node_transform.translation.truncate());
+                if distance < 25.0 { // Node radius
+                    println!("Clicked node to activate: {}", node_comp.id);
+                    
+                    // Deselect any previously selected node if it's different
+                    if let Some(prev_selected) = *selected_node_entity {
+                        if prev_selected != node_entity {
+                             commands.entity(prev_selected).remove::<ActivatedNode>();
+                        }
+                    }
+                    
+                    commands.entity(node_entity).insert(ActivatedNode);
+                    *selected_node_entity = Some(node_entity);
+                    clicked_on_node = true;
+                    break; 
                 }
-                NodeState::Active => {
-                    info!("Node {:?} is already active.", entity);
+            }
+            // If we clicked but not on a node, and a node was selected, deselect it (unless dragging starts)
+            if !clicked_on_node {
+                if let Some(prev_selected) = *selected_node_entity {
+                     // This deselection will be handled by connection drawing logic if a drag starts
+                     // otherwise, it might be desired to deselect on empty space click.
+                     // For now, connection logic handles deselection.
                 }
-                NodeState::Target | NodeState::Start => {
-                    info!("Clicked on a Start/Target node: {:?}.", *node_state);
-                }
+                 *selected_node_entity = None; // Clear selection if clicked on empty space
             }
         }
     }
 }
-
-/// System to update the visual appearance of nodes based on their state.
-pub fn update_node_visuals_system(
-    mut query: Query<(&NodeState, &mut Sprite, Option<&PuzzleElement>), Changed<NodeState>>,
-) {
-    for (node_state, mut sprite, puzzle_opt) in &mut query {
-        sprite.color = color_for_node_state(node_state);
-        if puzzle_opt.is_some() {
-            // Example: Make puzzle elements slightly larger or add an outline if possible with Sprite
-            // sprite.custom_size = Some(Vec2::new(55.0, 55.0)); // Slightly larger
-        } else {
-            // sprite.custom_size = Some(Vec2::new(50.0, 50.0)); // Reset to default if not puzzle
-        }
-    }
-}
-File created successfully.
