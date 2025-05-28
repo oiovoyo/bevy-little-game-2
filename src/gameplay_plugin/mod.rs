@@ -1,25 +1,21 @@
-use bevy::prelude::*;
+use bevy::prelude::*; 
 use crate::game_state::GameState;
 use crate::resources::{CurrentLevel, PlayerAttempt, PuzzleSpec};
 use crate::components::GameplayUI;
 
-// Declare sub-modules of the gameplay_plugin
 pub mod node;
 pub mod connection;
 pub mod puzzle;
 pub mod echo;
 
-// Event to signal a connection was made by the player
 #[derive(Event, Debug)]
 pub struct ConnectionAttemptEvent {
     pub node1_id: usize,
     pub node2_id: usize,
 }
 
-// Event to signal puzzle completion
 #[derive(Event, Debug)]
 pub struct PuzzleCompleteEvent;
-
 
 pub struct GameplayPlugin;
 
@@ -30,15 +26,15 @@ impl Plugin for GameplayPlugin {
             .add_event::<PuzzleCompleteEvent>()
             .init_resource::<CurrentLevel>()
             .init_resource::<PlayerAttempt>()
-            .init_resource::<PuzzleSpec>() // Initialize with default
+            .init_resource::<PuzzleSpec>() 
             .add_systems(OnEnter(GameState::LoadingLevel), puzzle::setup_level_system)
             .add_systems(Update, 
                 (
                     node::node_interaction_system,
-                    echo::echo_visualization_system, // Placeholder
+                    echo::echo_visualization_system, 
                     connection::draw_connection_system,
                     connection::check_connection_attempt_system,
-                    connection::persistent_connection_render_system, // Added this
+                    connection::persistent_connection_render_system, 
                     puzzle::check_puzzle_completion_system,
                     gameplay_keyboard_input_system,
                 ).run_if(in_state(GameState::Playing))
@@ -63,10 +59,9 @@ fn gameplay_keyboard_input_system(
          next_game_state.set(GameState::LevelComplete); 
     }
     if keyboard_input.just_pressed(KeyCode::Space) { 
-        puzzle_complete_event.send(PuzzleCompleteEvent);
+        puzzle_complete_event.write(PuzzleCompleteEvent); // Corrected
     }
 }
-
 
 fn cleanup_gameplay_entities(
     mut commands: Commands, 
@@ -75,12 +70,12 @@ fn cleanup_gameplay_entities(
     gameplay_ui_query: Query<Entity, With<GameplayUI>>, 
 ) {
     for entity in node_query.iter() {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn(); // Corrected
     }
     for entity in connection_query.iter() {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn(); // Corrected
     }
      for entity in gameplay_ui_query.iter() { 
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn(); // Corrected
     }
 }
