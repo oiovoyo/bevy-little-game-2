@@ -1,8 +1,8 @@
-use bevy::prelude::*;
+use bevy::prelude::*; // Added
 use crate::game_state::GameState;
 use crate::resources::{CurrentLevel, GameFont};
 use crate::components::{LevelCompleteUI, GameButtonAction};
-use crate::gameplay_plugin::PuzzleCompleteEvent; // Listen to this event
+use crate::gameplay_plugin::PuzzleCompleteEvent;
 
 pub struct UIPlugin;
 
@@ -14,29 +14,27 @@ impl Plugin for UIPlugin {
                 (level_complete_button_interaction_system).run_if(in_state(GameState::LevelComplete))
             )
             .add_systems(OnExit(GameState::LevelComplete), cleanup_level_complete_ui)
-            .add_systems(Update, handle_puzzle_complete_event); // System to listen for puzzle completion
+            .add_systems(Update, handle_puzzle_complete_event);
     }
 }
 
 fn handle_puzzle_complete_event(
     mut puzzle_complete_reader: EventReader<PuzzleCompleteEvent>,
     mut next_game_state: ResMut<NextState<GameState>>,
-    game_state: Res<State<GameState>>, // To ensure we are in Playing state before transition
+    game_state: Res<State<GameState>>,
 ) {
-    if *game_state.get() == GameState::Playing { // Only transition if currently playing
+    if *game_state.get() == GameState::Playing {
         if puzzle_complete_reader.read().next().is_some() {
             next_game_state.set(GameState::LevelComplete);
         }
     }
 }
 
-
 fn setup_level_complete_ui(
     mut commands: Commands, 
     game_font: Res<GameFont>, 
     current_level: Res<CurrentLevel>
 ) {
-    // Spawn a new camera for this UI layer if needed, or ensure it's drawn on top
     commands.spawn((Camera2dBundle::default(), LevelCompleteUI)); 
 
     commands.spawn((
@@ -49,7 +47,7 @@ fn setup_level_complete_ui(
                 justify_content: JustifyContent::Center,
                 ..default()
             },
-            background_color: Color::rgba(0.0, 0.0, 0.0, 0.85).into(), // Darker overlay
+            background_color: Color::srgba(0.0, 0.0, 0.0, 0.85).into(), // Corrected
             ..default()
         },
         LevelCompleteUI,
@@ -59,7 +57,7 @@ fn setup_level_complete_ui(
             TextStyle {
                 font: game_font.0.clone(),
                 font_size: 60.0,
-                color: Color::rgb(0.5, 1.0, 0.5), // Light Green
+                color: Color::srgb(0.5, 1.0, 0.5), // Corrected
             },
         ).with_style(Style { margin: UiRect::bottom(Val::Px(30.0)), ..default() }));
 
@@ -75,8 +73,8 @@ fn setup_level_complete_ui(
                         border: UiRect::all(Val::Px(2.0)),
                         ..default()
                     },
-                    border_color: BorderColor(Color::rgb(0.3, 0.3, 0.7)),
-                    background_color: Color::rgb(0.2, 0.2, 0.6).into(),
+                    border_color: BorderColor(Color::srgb(0.3, 0.3, 0.7)), // Corrected
+                    background_color: Color::srgb(0.2, 0.2, 0.6).into(), // Corrected
                     ..default()
                 },
                 GameButtonAction::NextLevel,
@@ -96,7 +94,7 @@ fn setup_level_complete_ui(
                 TextStyle {
                     font: game_font.0.clone(),
                     font_size: 40.0,
-                    color: Color::rgb(0.6, 1.0, 0.6), // Bright Green
+                    color: Color::srgb(0.6, 1.0, 0.6), // Corrected
                 },
             ).with_style(Style { margin: UiRect::bottom(Val::Px(20.0)), ..default() }));
         }
@@ -111,8 +109,8 @@ fn setup_level_complete_ui(
                      border: UiRect::all(Val::Px(2.0)),
                     ..default()
                 },
-                border_color: BorderColor(Color::rgb(0.7, 0.3, 0.3)),
-                background_color: Color::rgb(0.6, 0.2, 0.2).into(),
+                border_color: BorderColor(Color::srgb(0.7, 0.3, 0.3)), // Corrected
+                background_color: Color::srgb(0.6, 0.2, 0.2).into(), // Corrected
                 ..default()
             },
             GameButtonAction::BackToMenu,
@@ -148,7 +146,6 @@ fn level_complete_button_interaction_system(
                         }
                     }
                     GameButtonAction::BackToMenu => {
-                        // current_level.level_id = 0; // Reset or store last played. Let LoadingLevel handle reset if > MAX
                         next_game_state.set(GameState::MainMenu);
                     }
                     _ => {} 
@@ -157,11 +154,11 @@ fn level_complete_button_interaction_system(
             Interaction::Hovered => {
                 match button_action {
                     GameButtonAction::NextLevel => {
-                        *bg_color = Color::rgb(0.3, 0.3, 0.7).into();
+                        *bg_color = Color::srgb(0.3, 0.3, 0.7).into(); // Corrected
                         *border_color = BorderColor(Color::WHITE);
                     }
                     GameButtonAction::BackToMenu => {
-                         *bg_color = Color::rgb(0.7, 0.3, 0.3).into();
+                         *bg_color = Color::srgb(0.7, 0.3, 0.3).into(); // Corrected
                          *border_color = BorderColor(Color::WHITE);
                     }
                     _ => {}
@@ -170,12 +167,12 @@ fn level_complete_button_interaction_system(
             Interaction::None => {
                  match button_action {
                     GameButtonAction::NextLevel => {
-                        *bg_color = Color::rgb(0.2, 0.2, 0.6).into();
-                        *border_color = BorderColor(Color::rgb(0.3, 0.3, 0.7));
+                        *bg_color = Color::srgb(0.2, 0.2, 0.6).into(); // Corrected
+                        *border_color = BorderColor(Color::srgb(0.3, 0.3, 0.7)); // Corrected
                     }
                     GameButtonAction::BackToMenu => {
-                         *bg_color = Color::rgb(0.6, 0.2, 0.2).into();
-                        *border_color = BorderColor(Color::rgb(0.7, 0.3, 0.3));
+                         *bg_color = Color::srgb(0.6, 0.2, 0.2).into(); // Corrected
+                        *border_color = BorderColor(Color::srgb(0.7, 0.3, 0.3)); // Corrected
                     }
                      _ => {}
                 }
@@ -186,6 +183,6 @@ fn level_complete_button_interaction_system(
 
 fn cleanup_level_complete_ui(mut commands: Commands, query: Query<Entity, With<LevelCompleteUI>>) {
     for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn(); // Corrected
     }
 }

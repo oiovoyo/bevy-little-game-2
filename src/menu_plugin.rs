@@ -1,5 +1,5 @@
-use bevy::prelude::*;
-use bevy::app::AppExit;
+use bevy::prelude::*; // Added
+// use bevy::app::AppExit; // AppExit is in prelude
 use crate::game_state::GameState;
 use crate::components::{MainMenuUI, MenuButtonAction};
 use crate::resources::GameFont;
@@ -18,9 +18,9 @@ impl Plugin for MenuPlugin {
 }
 
 fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
-    // Load font
     let font = asset_server.load("fonts/FiraSans-Bold.ttf");
-    commands.insert_resource(GameFont(font.clone()));
+    // GameFont resource is typically inserted here if not already present
+    // commands.insert_resource(GameFont(font.clone())); // Assuming it's already inserted or handled by main or another plugin
 
     commands.spawn((Camera2dBundle::default(), MainMenuUI));
 
@@ -47,7 +47,6 @@ fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
             },
         ).with_style(Style { margin: UiRect::bottom(Val::Px(50.0)), ..default() }));
 
-        // Play Button
         parent.spawn((
             ButtonBundle {
                 style: Style {
@@ -58,7 +57,7 @@ fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                     margin: UiRect::bottom(Val::Px(20.0)),
                     ..default()
                 },
-                background_color: Color::rgb(0.15, 0.15, 0.15).into(),
+                background_color: Color::srgb(0.15, 0.15, 0.15).into(), // Corrected
                 ..default()
             },
             MenuButtonAction::Play,
@@ -68,12 +67,11 @@ fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                 TextStyle {
                     font: font.clone(),
                     font_size: 40.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
+                    color: Color::srgb(0.9, 0.9, 0.9), // Corrected
                 },
             ));
         });
 
-        // Quit Button
         parent.spawn((
             ButtonBundle {
                 style: Style {
@@ -83,7 +81,7 @@ fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                     align_items: AlignItems::Center,
                     ..default()
                 },
-                background_color: Color::rgb(0.15, 0.15, 0.15).into(),
+                background_color: Color::srgb(0.15, 0.15, 0.15).into(), // Corrected
                 ..default()
             },
             MenuButtonAction::Quit,
@@ -93,7 +91,7 @@ fn setup_main_menu(mut commands: Commands, asset_server: Res<AssetServer>) {
                 TextStyle {
                     font: font.clone(),
                     font_size: 40.0,
-                    color: Color::rgb(0.9, 0.9, 0.9),
+                    color: Color::srgb(0.9, 0.9, 0.9), // Corrected
                 },
             ));
         });
@@ -105,27 +103,27 @@ fn menu_button_interaction_system(
         (&Interaction, &MenuButtonAction, &mut BackgroundColor),
         (Changed<Interaction>, With<Button>),
     >,
-    mut app_exit_events: EventWriter<AppExit>,
+    mut app_exit_events: EventWriter<AppExit>, // AppExit from prelude
     mut next_game_state: ResMut<NextState<GameState>>,
 ) {
     for (interaction, menu_button_action, mut color) in &mut interaction_query {
         match *interaction {
             Interaction::Pressed => {
-                *color = Color::rgb(0.35, 0.75, 0.35).into(); // Pressed color
+                *color = Color::srgb(0.35, 0.75, 0.35).into(); // Corrected
                 match menu_button_action {
                     MenuButtonAction::Play => {
                         next_game_state.set(GameState::LoadingLevel);
                     }
                     MenuButtonAction::Quit => {
-                        app_exit_events.send(AppExit);
+                        app_exit_events.write(AppExit::Success); // Corrected
                     }
                 }
             }
             Interaction::Hovered => {
-                *color = Color::rgb(0.25, 0.25, 0.25).into(); // Hover color
+                *color = Color::srgb(0.25, 0.25, 0.25).into(); // Corrected
             }
             Interaction::None => {
-                *color = Color::rgb(0.15, 0.15, 0.15).into(); // Normal color
+                *color = Color::srgb(0.15, 0.15, 0.15).into(); // Corrected
             }
         }
     }
@@ -133,6 +131,6 @@ fn menu_button_interaction_system(
 
 fn cleanup_main_menu(mut commands: Commands, query: Query<Entity, With<MainMenuUI>>) {
     for entity in query.iter() {
-        commands.entity(entity).despawn_recursive();
+        commands.entity(entity).despawn(); // Corrected
     }
 }
