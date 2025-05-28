@@ -1,139 +1,114 @@
-//! # Puzzle Logic and Validation
-
 use bevy::prelude::*;
-use crate::components::{Node, NodeState, DataEcho, PuzzleElement};
-use crate::resources::{LevelManager, GameTimer, PlayerActivationSequence, EchoPath};
+use crate::components::{Node, GameplayUI};
+use crate::resources::{CurrentLevel, PuzzleSpec, PlayerAttempt, GameFont}; // Added GameFont
 use crate::game_state::GameState;
+use super::PuzzleCompleteEvent; 
+use std::collections::HashSet;
 
-/// System to check if the level completion conditions are met.
-pub fn check_level_completion_system(
-    mut game_state: ResMut<NextState<GameState>>,
-    level_manager: Res<LevelManager>,
-    player_sequence: Res<PlayerActivationSequence>,
-    node_query: Query<(Entity, &Node, &NodeState)>, // Querying Entity as well for robust checks
-    echo_query: Query<&DataEcho>,
+
+const MAX_LEVELS: usize = 2;
+fn get_level_spec(level_id: usize) -> PuzzleSpec {
+    match level_id {
+        0 => PuzzleSpec { 
+            node_positions: vec![
+                Vec2::new(-150.0, 0.0), Vec2::new(0.0, 100.0), Vec2::new(150.0, 0.0)
+            ],
+            correct_connections: [(0,1), (1,2)].iter().cloned().collect(),
+        },
+        1 => PuzzleSpec { 
+            node_positions: vec![
+                Vec2::new(-200.0, 100.0), Vec2::new(-200.0, -100.0),
+                Vec2::new(0.0, 0.0),
+                Vec2::new(200.0, 100.0), Vec2::new(200.0, -100.0),
+            ],
+            correct_connections: [(0,2), (1,2), (2,3), (2,4)].iter().cloned().collect(),
+        },
+        _ => get_level_spec(0), 
+    }
+}
+
+
+pub fn setup_level_system(
+    mut commands: Commands,
+    mut current_level: ResMut<CurrentLevel>,
+    mut puzzle_spec: ResMut<PuzzleSpec>,
+    mut player_attempt: ResMut<PlayerAttempt>,
+    mut next_game_state: ResMut<NextState<GameState>>,
+    game_font: Res<GameFont>, // Get the loaded font
 ) {
-    let current_level = if let Some(l) = level_manager.get_current_level() {
-        l
-    } else {
-        return; 
-    };
+    current_level.total_levels = MAX_LEVELS;
+    
+    // Logic for current_level.level_id update should happen before calling this,
+    // e.g., in button handlers or when transitioning from MainMenu.
+    // If current_level.id >= MAX_LEVELS, it means we've finished all, reset to 0.
+    if current_level.level_id >= MAX_LEVELS {
+        current_level.level_id = 0;
+    }
+    
+    *puzzle_spec = get_level_spec(current_level.level_id);
+    player_attempt.drawn_connections.clear(); 
 
-    // Find the Entity of the target node for the current level
-    let target_node_entity_opt = node_query.iter()
-        .find(|(_, node_c, _)| node_c.id == current_level.target_node_index)
-        .map(|(entity, _, _)| entity);
+    commands.spawn((Camera2dBundle::default(), GameplayUI)); 
 
-    if target_node_entity_opt.is_none() {
-        warn!("Target node ID {} not found as an entity in the current level.", current_level.target_node_index);
+    for (idx, pos) in puzzle_spec.node_positions.iter().enumerate() {
+        let node_color = Color::rgb(0.2, 0.2, 0.8); 
+        commands.spawn((
+            SpriteBundle {
+                sprite: Sprite {
+                    color: node_color,
+                    custom_size: Some(Vec2::new(50.0, 50.0)),
+                    ..default()
+                },
+                transform: Transform::from_translation(pos.extend(0.0)),
+                ..default()
+            },
+            Node { id: idx, original_color: node_color },
+            Name::new(format!("Node_{}", idx)),
+            GameplayUI, 
+        ));
+    }
+    
+     commands.spawn((
+        TextBundle::from_section(
+            format!("Level: {}/{}", current_level.level_id + 1, current_level.total_levels),
+            TextStyle {
+                font: game_font.0.clone(),
+                font_size: 30.0,
+                color: Color::WHITE,
+            },
+        )
+        .with_style(Style {
+            position_type: PositionType::Absolute,
+            top: Val::Px(10.0),
+            left: Val::Px(10.0),
+            ..default()
+        }),
+        GameplayUI
+    ));
+
+    println!("Setting up Level: {}", current_level.level_id);
+    next_game_state.set(GameState::Playing);
+}
+
+
+pub fn check_puzzle_completion_system(
+    puzzle_spec: Res<PuzzleSpec>,
+    player_attempt: Res<PlayerAttempt>,
+    mut puzzle_complete_event: EventWriter<PuzzleCompleteEvent>,
+    mut already_fired_event: Local<bool>, 
+    game_state: Res<State<GameState>>,
+) {
+    if *game_state.get() != GameState::Playing { 
+        *already_fired_event = false; 
         return;
     }
-    let target_node_entity = target_node_entity_opt.unwrap();
 
-    // Condition 1: Has an echo reached THE target node for the level?
-    let mut echo_reached_final_target = false;
-    for echo in echo_query.iter() {
-        if echo.current_node == target_node_entity && // current_node is an Entity
-           echo.target_node == target_node_entity && // echo's specific target is the level's target
-           echo.current_segment_index + 1 >= echo.path.len() { // and it has finished its path
-            echo_reached_final_target = true;
-            break;
-        }
-    }
-    
-    // Condition 2: Is the target node itself in an Active state?
-    // (This might be redundant if echo arrival implies activation, but can be an explicit check)
-    let mut target_node_component_active = false;
-    if let Ok((_, _, state)) = node_query.get(target_node_entity) {
-        if *state == NodeState::Active || *state == NodeState::Target { // Target state might also count as "active" for completion
-            target_node_component_active = true;
-        }
-    }
-
-    // Condition 3: Are all puzzle requirements met (e.g., activation sequence)?
-    let mut sequence_correct_and_complete = true; // Assume true if no sequence is required
-    if let Some(required_sequence) = &current_level.required_activation_sequence {
-        if player_sequence.activated_node_ids.len() < required_sequence.len() {
-            sequence_correct_and_complete = false; // Not all required nodes activated yet
-        } else {
-            // Check if the player's activation order matches the required sequence exactly
-            // (or if it's a prefix and length matches)
-            for (i, &req_id) in required_sequence.iter().enumerate() {
-                if player_sequence.activated_node_ids.get(i) != Some(&req_id) {
-                    sequence_correct_and_complete = false;
-                    break;
-                }
-            }
-            // Ensure no extra nodes were activated if the sequence must be exact and all are activated
-            if sequence_correct_and_complete && player_sequence.activated_node_ids.len() > required_sequence.len() {
-               // This depends on game rules. For a strict sequence, this would be a fail.
-               // For now, let's assume if the required sequence is a prefix and met, it's okay.
-               // However, for "level completion", usually exact match of requirements is needed.
-               // Let's assume for now that if a sequence is specified, its length must also match.
-               if player_sequence.activated_node_ids.len() != required_sequence.len() {
-                    sequence_correct_and_complete = false;
-               }
-            }
-        }
-    }
-    
-    // Check PuzzleElement conditions (e.g. all nodes with PuzzleElement having required_order are active in that order)
-    // This part can be complex. For now, the `required_activation_sequence` in `Level` is the main driver.
-    // A more detailed check would iterate PuzzleElements and verify their specific conditions against PlayerActivationSequence.
-
-    if echo_reached_final_target && target_node_component_active && sequence_correct_and_complete {
-        info!("Level {} complete!", current_level.id);
-        game_state.set(GameState::LevelComplete);
+    if !*already_fired_event && 
+       player_attempt.drawn_connections.len() == puzzle_spec.correct_connections.len() &&
+       player_attempt.drawn_connections.is_subset(&puzzle_spec.correct_connections) &&
+       puzzle_spec.correct_connections.is_subset(&player_attempt.drawn_connections) { // Check for exact match
+        println!("Puzzle Complete!");
+        puzzle_complete_event.send(PuzzleCompleteEvent);
+        *already_fired_event = true;
     }
 }
-
-/// System to check for level failure conditions (e.g., timer runs out).
-pub fn check_level_fail_system(
-    mut game_state: ResMut<NextState<GameState>>,
-    game_timer: Res<GameTimer>,
-    level_manager: Res<LevelManager>,
-    player_sequence: Res<PlayerActivationSequence>, // To check for incorrect activations
-) {
-    // Check for timer expiration
-    if game_timer.time_limit_seconds.is_some() && game_timer.timer.finished() && !game_timer.timer.just_finished() {
-        // Check !just_finished to prevent race condition if completion and timer end on same frame
-        if game_state.0 != Some(GameState::LevelComplete) && game_state.0 != Some(GameState::GameWon) { // Don't fail if already completed
-            info!("Level failed: Timer ran out.");
-            game_state.set(GameState::GameOver);
-            return;
-        }
-    }
-
-    // Check for incorrect sequence activation if the level defines a strict sequence
-    // This needs to be carefully designed: when is an activation "wrong"?
-    // - Activating a node not in the sequence at all?
-    // - Activating a node in the sequence but out of order?
-    if let Some(current_level) = level_manager.get_current_level() {
-        if let Some(required_sequence) = &current_level.required_activation_sequence {
-            // Iterate through player's activations so far
-            for (i, activated_node_id) in player_sequence.activated_node_ids.iter().enumerate() {
-                // If the current activated node is beyond the length of required sequence, it's an extra activation.
-                // (This might be fine or a failure depending on rules - for now, let's assume it's fine if prefix matches)
-                if i >= required_sequence.len() { 
-                    // Potentially a failure condition if sequence must be exact length
-                    // Example: if required is [0,1,2] and player does [0,1,2,3] -> this is an extra activation.
-                    // For now, we only check if the *prefix* is wrong.
-                    continue;
-                }
-
-                if required_sequence[i] != *activated_node_id {
-                    // Player activated a node that doesn't match the required node at this position in the sequence.
-                    info!(
-                        "Level failed: Incorrect node activation. Expected node ID {} at position {}, but got {}.",
-                        required_sequence[i], i, activated_node_id
-                    );
-                    // game_state.set(GameState::GameOver); // This might be too strict depending on puzzle design.
-                                                          // Some puzzles might allow trying different paths.
-                                                          // Failure should be based on definitive game rules (e.g. echo hits wrong target, or specific "trap" node).
-                    return;
-                }
-            }
-        }
-    }
-}
-File created successfully.
